@@ -1,6 +1,7 @@
 #include "golapp.h"
-#include "VulkanPhysicalDevice.h"
+
 #include <algorithm>
+#include <format>
 #include <memory>
 #include <stdexcept>
 #include <vector>
@@ -68,6 +69,8 @@ void GolApp::init()
 
     initDebugCallback();
 
+    createSurface();
+
     pickPhysicalDevice();
 
     createLogicalDevice();
@@ -79,7 +82,7 @@ void GolApp::initDebugCallback()
     using MessageType = VkWrap::VulkanDebugMessenger::MessageType;
 
     SeverityBits messageSeverity = static_cast<VkDebugUtilsMessageSeverityFlagBitsEXT>(
-                VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+                //VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
                 VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
                 VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT);
 
@@ -135,12 +138,8 @@ int GolApp::rateDeviceSuitability(VkWrap::VulkanPhysicalDevice &dev)
 
     VkPhysicalDeviceFeatures features = dev.getFeatures();
     VkPhysicalDeviceProperties properties = dev.getProperties();
-    std::vector<VkQueueFamilyProperties> queueFamilies = dev.getQueueProperties();
 
-    if(std::none_of(queueFamilies.begin(), queueFamilies.end(), [](VkQueueFamilyProperties queueInfo)
-        {
-            return queueInfo.queueFlags & VK_QUEUE_GRAPHICS_BIT;
-        }))
+    if(!getDeviceIndices(dev).complete())
     {
         return 0;
     }
@@ -161,18 +160,38 @@ int GolApp::rateDeviceSuitability(VkWrap::VulkanPhysicalDevice &dev)
     return score;
 }
 
-GolApp::QueueIndicies GolApp::getCurrentDeviceIndicies()
+void GolApp::createSurface()
 {
-    QueueIndicies idx;
+    VkSurfaceKHR surface = VK_NULL_HANDLE;
 
-    std::vector<VkQueueFamilyProperties> queueFamilies = m_physDevice->getQueueProperties();
+    VkResult res;
+
+    if ((res = glfwCreateWindowSurface(GVKInstance::vki()->rawInstance(), m_window, nullptr, &surface)) != VK_SUCCESS)
+    {
+        throw std::runtime_error(std::format("failed to create window surface! Code {}",static_cast<int>(res)));
+    }
+
+    m_surface = std::make_shared<VkWrap::VulkanSurface>(surface, GVKInstance::vki()->rawInstance());
+}
+
+GolApp::QueueFamilyIndices GolApp::getDeviceIndices(VkWrap::VulkanPhysicalDevice& dev)
+{
+    QueueFamilyIndices idx;
+
+    std::vector<VkQueueFamilyProperties> queueFamilies = dev.getQueueProperties();
 
     for(uint32_t i = 0; i < queueFamilies.size(); i++)
     {
         if(queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
         {
-            idx.graphicQueueIndex = i;
-            break;
+            idx.graphicFamilyIndex = i;
+        }
+
+        VkBool32 presentSupport = false;
+        vkGetPhysicalDeviceSurfaceSupportKHR(dev.rawHandle(), i, m_surface->rawHandle(), &presentSupport);
+
+        if (presentSupport) {
+            idx.presentFamilyIndex = i;
         }
     }
 
@@ -181,11 +200,11 @@ GolApp::QueueIndicies GolApp::getCurrentDeviceIndicies()
 
 void GolApp::createLogicalDevice()
 {
-    QueueIndicies indicies = getCurrentDeviceIndicies();
+    QueueFamilyIndices indices = getDeviceIndices(*m_physDevice.get());
 
     VkDeviceQueueCreateInfo queueCreateInfo{};
     queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    queueCreateInfo.queueFamilyIndex = indicies.graphicQueueIndex.value();
+    queueCreateInfo.queueFamilyIndex = indices.graphicFamilyIndex.value();
     queueCreateInfo.queueCount = 1;
 
     float queuePriority = 1.0f;
@@ -214,7 +233,8 @@ std::vector<std::string> GolApp::getRequiredExtensions()
 
     glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
-    std::vector<std::string> extensions(glfwExtensionCount);
+    std::vector<std::string> extensions;
+    extensions.reserve(glfwExtensionCount);
 
     for(size_t i = 0; i < glfwExtensionCount; i++)
     {

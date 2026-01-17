@@ -55,7 +55,8 @@ VulkanInstance::VulkanInstance(int minorApiVersion, std::vector<std::string>& ex
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     createInfo.pApplicationInfo = &appInfo;
 
-    std::vector<const char*> cstrExtenstions;
+    std::vector<const char*> cstrExtenstions(extensions.size(), nullptr);
+
     for(size_t i = 0; i < cstrExtenstions.size(); i++)
     {
         cstrExtenstions[i] = extensions[i].c_str();
@@ -68,7 +69,7 @@ VulkanInstance::VulkanInstance(int minorApiVersion, std::vector<std::string>& ex
     createInfo.enabledExtensionCount = cstrExtenstions.size();
     createInfo.ppEnabledExtensionNames = cstrExtenstions.data();
 
-    std::vector<const char*> cstrLayers(validationLayers.size());
+    std::vector<const char*> cstrLayers(validationLayers.size(), nullptr);
     for(size_t i = 0; i < validationLayers.size(); i++)
     {
         cstrLayers[i] = validationLayers[i].c_str();

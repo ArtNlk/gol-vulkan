@@ -20,9 +20,15 @@ public:
     void run();
 
 protected:
-    struct QueueIndicies
+    struct QueueFamilyIndices
     {
-        std::optional<uint32_t> graphicQueueIndex;
+        std::optional<uint32_t> graphicFamilyIndex;
+        std::optional<uint32_t> presentFamilyIndex;
+
+        bool complete()
+        {
+            return graphicFamilyIndex.has_value() && presentFamilyIndex.has_value();
+        }
     };
 
     void init();
@@ -32,8 +38,10 @@ protected:
     void pickPhysicalDevice();
     int rateDeviceSuitability(VkWrap::VulkanPhysicalDevice& dev);
 
-    QueueIndicies getCurrentDeviceIndicies();
+    QueueFamilyIndices getDeviceIndices(VkWrap::VulkanPhysicalDevice& dev);
     void createLogicalDevice();
+
+    void createSurface();
 
     static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
             VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -48,6 +56,7 @@ protected:
     std::shared_ptr<VkWrap::VulkanDebugMessenger> m_debugMessenger;
     std::shared_ptr<VkWrap::VulkanPhysicalDevice> m_physDevice;
     std::shared_ptr<VkWrap::VulkanLogicalDevice> m_device;
+    std::shared_ptr<VkWrap::VulkanSurface> m_surface;
 };
 
 #endif // GOLAPP_H

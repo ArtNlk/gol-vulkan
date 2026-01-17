@@ -13,8 +13,13 @@ class VulkanPhysicalDevice
 public:
     VulkanPhysicalDevice(VkPhysicalDevice device);
 
+    VkPhysicalDevice rawHandle();
 
-    std::vector<VkQueueFamilyProperties> getQueues();
+    std::vector<VkQueueFamilyProperties> getQueueProperties();
+
+    VkPhysicalDeviceProperties getProperties();
+
+    VkPhysicalDeviceFeatures getFeatures();
 
 protected:
     VkPhysicalDevice m_physDevice;

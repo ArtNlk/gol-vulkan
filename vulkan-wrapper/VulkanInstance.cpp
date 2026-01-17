@@ -5,7 +5,8 @@
 #include <stdexcept>
 #include <format>
 #include <cstring>
-#include <vulkan/vulkan_core.h>
+
+#include "VulkanPhysicalDevice.h"
 
 namespace VkWrap
 {
@@ -116,19 +117,28 @@ std::vector<VkLayerProperties> VulkanInstance::getLayers()
     return availableLayers;
 }
 
-std::vector<VkPhysicalDevice> VulkanInstance::getPhysicalDevices()
+std::vector<VulkanPhysicalDevice> VulkanInstance::getPhysicalDevices()
 {
     uint32_t deviceCount = 0;
     vkEnumeratePhysicalDevices(m_vkInstance, &deviceCount, nullptr);
 
     if (deviceCount == 0) {
-        return std::vector<VkPhysicalDevice>();
+        return std::vector<VulkanPhysicalDevice>();
     }
 
     std::vector<VkPhysicalDevice> devices(deviceCount);
     vkEnumeratePhysicalDevices(m_vkInstance, &deviceCount, devices.data());
 
-    return devices;
+    std::vector<VulkanPhysicalDevice> output;
+
+    output.reserve(devices.size());
+
+    for(auto vkDev : devices)
+    {
+        output.emplace_back(vkDev);
+    }
+
+    return output;
 }
 
 VkInstance VulkanInstance::rawInstance()

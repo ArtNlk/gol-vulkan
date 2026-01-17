@@ -1,2 +1,4 @@
 #include "VulkanInstance.h"
 #include "VulkanDebugMessenger.h"
+#include "VulkanPhysicalDevice.h"
+#include "VulkanLogicalDevice.h"

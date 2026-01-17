@@ -1,5 +1,7 @@
 #include "golapp.h"
-#include "VulkanDebugMessenger.h"
+#include "VulkanPhysicalDevice.h"
+#include <algorithm>
+#include <memory>
 #include <stdexcept>
 #include <vector>
 #include <iostream>
@@ -65,6 +67,10 @@ void GolApp::init()
     GVKInstance::i()->initialize(3,extensions,validationLayers);
 
     initDebugCallback();
+
+    pickPhysicalDevice();
+
+    createLogicalDevice();
 }
 
 void GolApp::initDebugCallback()
@@ -90,6 +96,108 @@ void GolApp::initDebugCallback()
 void GolApp::cleanup()
 {
     m_debugMessenger.reset();
+}
+
+void GolApp::pickPhysicalDevice()
+{
+    std::vector<VkWrap::VulkanPhysicalDevice> physDevices = GVKInstance::vki()->getPhysicalDevices();
+
+    if(physDevices.empty())
+    {
+        throw std::runtime_error("No vulkan devices found!");
+    }
+
+    int bestScore = 0;
+
+    int bestIdx = -1;
+
+    for(int i = 0; i < physDevices.size(); i++)
+    {
+        int score = rateDeviceSuitability(physDevices[i]);
+        if(score > bestScore)
+        {
+            bestScore = score;
+            bestIdx = i;
+        }
+    }
+
+    if(bestScore == 0)
+    {
+        throw std::runtime_error("No suitable physical device found!");
+    }
+
+    m_physDevice = std::make_shared<VkWrap::VulkanPhysicalDevice>(physDevices[bestIdx]);
+}
+
+int GolApp::rateDeviceSuitability(VkWrap::VulkanPhysicalDevice &dev)
+{
+    int score = 0;
+
+    VkPhysicalDeviceFeatures features = dev.getFeatures();
+    VkPhysicalDeviceProperties properties = dev.getProperties();
+    std::vector<VkQueueFamilyProperties> queueFamilies = dev.getQueueProperties();
+
+    if(std::none_of(queueFamilies.begin(), queueFamilies.end(), [](VkQueueFamilyProperties queueInfo)
+        {
+            return queueInfo.queueFlags & VK_QUEUE_GRAPHICS_BIT;
+        }))
+    {
+        return 0;
+    }
+
+    // Discrete GPUs have a significant performance advantage
+    if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+       score += 1000;
+    }
+
+    // Maximum possible size of textures affects graphics quality
+    score += properties.limits.maxImageDimension2D;
+
+    // Application can't function without geometry shaders
+    if (!features.geometryShader) {
+       return 0;
+    }
+
+    return score;
+}
+
+GolApp::QueueIndicies GolApp::getCurrentDeviceIndicies()
+{
+    QueueIndicies idx;
+
+    std::vector<VkQueueFamilyProperties> queueFamilies = m_physDevice->getQueueProperties();
+
+    for(uint32_t i = 0; i < queueFamilies.size(); i++)
+    {
+        if(queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
+        {
+            idx.graphicQueueIndex = i;
+            break;
+        }
+    }
+
+    return idx;
+}
+
+void GolApp::createLogicalDevice()
+{
+    QueueIndicies indicies = getCurrentDeviceIndicies();
+
+    VkDeviceQueueCreateInfo queueCreateInfo{};
+    queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    queueCreateInfo.queueFamilyIndex = indicies.graphicQueueIndex.value();
+    queueCreateInfo.queueCount = 1;
+
+    float queuePriority = 1.0f;
+    queueCreateInfo.pQueuePriorities = &queuePriority;
+
+    VkPhysicalDeviceFeatures deviceFeatures{};
+
+    std::vector<std::string> validationLayers = {"VK_LAYER_KHRONOS_validation"};
+    std::vector<VkDeviceQueueCreateInfo> queueInfos;
+    queueInfos.push_back(queueCreateInfo);
+
+    m_device = std::make_shared<VkWrap::VulkanLogicalDevice>(m_physDevice->rawHandle(),queueInfos,deviceFeatures,validationLayers);
 }
 
 VkBool32 GolApp::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData) {

@@ -9,7 +9,12 @@ VulkanPhysicalDevice::VulkanPhysicalDevice(VkPhysicalDevice device) :
 
 }
 
-std::vector<VkQueueFamilyProperties> VulkanPhysicalDevice::getQueues()
+VkPhysicalDevice VulkanPhysicalDevice::rawHandle()
+{
+    return m_physDevice;
+}
+
+std::vector<VkQueueFamilyProperties> VulkanPhysicalDevice::getQueueProperties()
 {
     uint32_t queueFamilyCount = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(m_physDevice, &queueFamilyCount, nullptr);
@@ -23,6 +28,23 @@ std::vector<VkQueueFamilyProperties> VulkanPhysicalDevice::getQueues()
     vkGetPhysicalDeviceQueueFamilyProperties(m_physDevice, &queueFamilyCount, queueFamilies.data());
 
     return queueFamilies;
+}
+
+VkPhysicalDeviceProperties VulkanPhysicalDevice::getProperties()
+{
+    VkPhysicalDeviceProperties deviceProperties;
+
+    vkGetPhysicalDeviceProperties(m_physDevice, &deviceProperties);
+
+    return deviceProperties;
+}
+
+VkPhysicalDeviceFeatures VulkanPhysicalDevice::getFeatures()
+{
+    VkPhysicalDeviceFeatures deviceFeatures;
+    vkGetPhysicalDeviceFeatures(m_physDevice, &deviceFeatures);
+
+    return deviceFeatures;
 }
 
 }

@@ -1,3 +1,7 @@
+#ifndef VULKANINSTANCE_H
+#define VULKANINSTANCE_H
+
+#include "VulkanPhysicalDevice.h"
 #include <string>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
@@ -7,6 +11,8 @@
 
 namespace VkWrap
 {
+
+class VulkanPhysicalDevice;
 
 class VulkanInstance
 {
@@ -19,7 +25,7 @@ public:
 
     static std::vector<VkLayerProperties> getLayers();
 
-    std::vector<VkPhysicalDevice> getPhysicalDevices();
+    std::vector<VulkanPhysicalDevice> getPhysicalDevices();
 
     void filterValidationLayers(std::vector<std::string>& layers);
 
@@ -32,3 +38,5 @@ protected:
 };
 
 }
+
+#endif

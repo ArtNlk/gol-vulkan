@@ -14,6 +14,7 @@ class VulkanLogicalDevice
 public:
     VulkanLogicalDevice(VkPhysicalDevice physDev, std::vector<VkDeviceQueueCreateInfo> &queues,
                         VkPhysicalDeviceFeatures features,
+                        std::vector<std::string> extensions,
                         std::vector<std::string>& validationLayers);
     ~VulkanLogicalDevice();
 

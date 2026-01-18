@@ -1,6 +1,7 @@
 #ifndef GOLAPP_H
 #define GOLAPP_H
 
+#include "VulkanQueue.h"
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -8,6 +9,7 @@
 #include <string>
 #include <memory>
 #include <optional>
+#include <set>
 
 #include "VKWrap.h"
 
@@ -25,9 +27,19 @@ protected:
         std::optional<uint32_t> graphicFamilyIndex;
         std::optional<uint32_t> presentFamilyIndex;
 
-        bool complete()
+        bool complete() const
         {
             return graphicFamilyIndex.has_value() && presentFamilyIndex.has_value();
+        }
+
+        std::set<uint32_t> getUniquefamilies()
+        {
+            if(!complete())
+            {
+                return {};
+            }
+
+            return {graphicFamilyIndex.value(),presentFamilyIndex.value()};
         }
     };
 
@@ -49,7 +61,9 @@ protected:
             const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
             void* pUserData);
 
-    static std::vector<std::string> getRequiredExtensions();
+    static std::vector<std::string> getRequiredInstanceExtensions();
+
+    static std::vector<std::string> getRequiredDeviceExtensions();
 
     GLFWwindow* m_window;
 
@@ -57,6 +71,9 @@ protected:
     std::shared_ptr<VkWrap::VulkanPhysicalDevice> m_physDevice;
     std::shared_ptr<VkWrap::VulkanLogicalDevice> m_device;
     std::shared_ptr<VkWrap::VulkanSurface> m_surface;
+
+    VkWrap::VulkanQueue m_graphicQueue;
+    VkWrap::VulkanQueue m_presentQueue;
 };
 
 #endif // GOLAPP_H

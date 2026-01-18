@@ -1,6 +1,7 @@
 #include "golapp.h"
 
 #include <algorithm>
+#include <cstring>
 #include <format>
 #include <memory>
 #include <stdexcept>
@@ -61,7 +62,7 @@ void GolApp::init()
 
     std::cout.flush();
 
-    std::vector<std::string> extensions = getRequiredExtensions();
+    std::vector<std::string> extensions = getRequiredInstanceExtensions();
 
     std::vector<std::string> validationLayers = {"VK_LAYER_KHRONOS_validation"};
 
@@ -114,7 +115,7 @@ void GolApp::pickPhysicalDevice()
 
     int bestIdx = -1;
 
-    for(int i = 0; i < physDevices.size(); i++)
+    for(uint32_t i = 0; i < physDevices.size(); i++)
     {
         int score = rateDeviceSuitability(physDevices[i]);
         if(score > bestScore)
@@ -139,9 +140,25 @@ int GolApp::rateDeviceSuitability(VkWrap::VulkanPhysicalDevice &dev)
     VkPhysicalDeviceFeatures features = dev.getFeatures();
     VkPhysicalDeviceProperties properties = dev.getProperties();
 
+    // Application can't function without geometry shaders
+    if (!features.geometryShader) {
+       return 0;
+    }
+
     if(!getDeviceIndices(dev).complete())
     {
         return 0;
+    }
+
+    std::vector<VkExtensionProperties> extensions = dev.getExtensionProperties();
+
+    for(const auto &extensionName : getRequiredDeviceExtensions())
+    {
+        if(std::none_of(extensions.begin(), extensions.end(), [extensionName](VkExtensionProperties& prop)
+            {return std::strcmp(prop.extensionName, extensionName.c_str()) == 0;}))
+        {
+            return 0;
+        }
     }
 
     // Discrete GPUs have a significant performance advantage
@@ -151,11 +168,6 @@ int GolApp::rateDeviceSuitability(VkWrap::VulkanPhysicalDevice &dev)
 
     // Maximum possible size of textures affects graphics quality
     score += properties.limits.maxImageDimension2D;
-
-    // Application can't function without geometry shaders
-    if (!features.geometryShader) {
-       return 0;
-    }
 
     return score;
 }
@@ -202,21 +214,30 @@ void GolApp::createLogicalDevice()
 {
     QueueFamilyIndices indices = getDeviceIndices(*m_physDevice.get());
 
-    VkDeviceQueueCreateInfo queueCreateInfo{};
-    queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    queueCreateInfo.queueFamilyIndex = indices.graphicFamilyIndex.value();
-    queueCreateInfo.queueCount = 1;
+    std::vector<VkDeviceQueueCreateInfo> queueInfos;
 
     float queuePriority = 1.0f;
-    queueCreateInfo.pQueuePriorities = &queuePriority;
+    for (uint32_t queueFamily : indices.getUniquefamilies()) {
+        VkDeviceQueueCreateInfo queueCreateInfo{};
+        queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        queueCreateInfo.queueFamilyIndex = queueFamily;
+        queueCreateInfo.queueCount = 1;
+        queueCreateInfo.pQueuePriorities = &queuePriority;
+        queueInfos.push_back(queueCreateInfo);
+    }
 
     VkPhysicalDeviceFeatures deviceFeatures{};
 
     std::vector<std::string> validationLayers = {"VK_LAYER_KHRONOS_validation"};
-    std::vector<VkDeviceQueueCreateInfo> queueInfos;
-    queueInfos.push_back(queueCreateInfo);
 
-    m_device = std::make_shared<VkWrap::VulkanLogicalDevice>(m_physDevice->rawHandle(),queueInfos,deviceFeatures,validationLayers);
+    m_device = std::make_shared<VkWrap::VulkanLogicalDevice>(m_physDevice->rawHandle(),
+                                                             queueInfos,
+                                                             deviceFeatures,
+                                                             getRequiredDeviceExtensions(),
+                                                             validationLayers);
+
+    m_graphicQueue = m_device->getQueue(indices.graphicFamilyIndex.value());
+    m_presentQueue = m_device->getQueue(indices.presentFamilyIndex.value());
 }
 
 VkBool32 GolApp::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData) {
@@ -226,7 +247,7 @@ VkBool32 GolApp::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSev
     return VK_FALSE;
 }
 
-std::vector<std::string> GolApp::getRequiredExtensions()
+std::vector<std::string> GolApp::getRequiredInstanceExtensions()
 {
     uint32_t glfwExtensionCount = 0;
     const char** glfwExtensions;
@@ -242,4 +263,9 @@ std::vector<std::string> GolApp::getRequiredExtensions()
     }
 
     return extensions;
+}
+
+std::vector<std::string> GolApp::getRequiredDeviceExtensions()
+{
+    return {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 }

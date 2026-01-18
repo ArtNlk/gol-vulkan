@@ -7,6 +7,7 @@ namespace VkWrap
 
 VulkanLogicalDevice::VulkanLogicalDevice(VkPhysicalDevice physDev, std::vector<VkDeviceQueueCreateInfo> &queues,
                                          VkPhysicalDeviceFeatures features,
+                                         std::vector<std::string> extensions,
                                          std::vector<std::string>& validationLayers)
 {
     const bool validationLayersEnabled = !validationLayers.empty();
@@ -24,6 +25,16 @@ VulkanLogicalDevice::VulkanLogicalDevice(VkPhysicalDevice physDev, std::vector<V
     {
         cstrLayers[i] = validationLayers[i].c_str();
     }
+
+    std::vector<const char*> cstrExtenstions(extensions.size(), nullptr);
+
+    for(size_t i = 0; i < cstrExtenstions.size(); i++)
+    {
+        cstrExtenstions[i] = extensions[i].c_str();
+    }
+
+    createInfo.enabledExtensionCount = cstrExtenstions.size();
+    createInfo.ppEnabledExtensionNames = cstrExtenstions.data();
 
     if (validationLayersEnabled)
     {

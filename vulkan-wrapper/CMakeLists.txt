@@ -14,6 +14,7 @@ add_library(VulkanWrapper ${SOURCES} ${HEADERS}
     VulkanPhysicalDevice.h VulkanPhysicalDevice.cpp
     VulkanLogicalDevice.h VulkanLogicalDevice.cpp
     VulkanSurface.h VulkanSurface.cpp
+    VulkanQueue.h VulkanQueue.cpp
 )
 
 target_compile_options(VulkanWrapper PRIVATE

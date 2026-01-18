@@ -30,6 +30,17 @@ std::vector<VkQueueFamilyProperties> VulkanPhysicalDevice::getQueueProperties()
     return queueFamilies;
 }
 
+std::vector<VkExtensionProperties> VulkanPhysicalDevice::getExtensionProperties()
+{
+    uint32_t extensionCount = 0;
+    vkEnumerateDeviceExtensionProperties(m_physDevice, nullptr, &extensionCount, nullptr);
+
+    std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+    vkEnumerateDeviceExtensionProperties(m_physDevice, nullptr, &extensionCount, availableExtensions.data());
+
+    return availableExtensions;
+}
+
 VkPhysicalDeviceProperties VulkanPhysicalDevice::getProperties()
 {
     VkPhysicalDeviceProperties deviceProperties;

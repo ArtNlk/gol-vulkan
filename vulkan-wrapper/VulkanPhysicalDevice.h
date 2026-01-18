@@ -17,6 +17,8 @@ public:
 
     std::vector<VkQueueFamilyProperties> getQueueProperties();
 
+    std::vector<VkExtensionProperties> getExtensionProperties();
+
     VkPhysicalDeviceProperties getProperties();
 
     VkPhysicalDeviceFeatures getFeatures();

@@ -1,7 +1,10 @@
 #ifndef GOLAPP_H
 #define GOLAPP_H
 
+#include "VulkanPipeline.h"
+#include "VulkanPipelineLayout.h"
 #include "VulkanQueue.h"
+#include "VulkanRenderPass.h"
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -55,6 +58,18 @@ protected:
 
     void createSurface();
 
+    void createSwapchain();
+
+    VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
+
+    VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
+
+    VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
+
+    void createRenderPass();
+
+    void createPipeline();
+
     static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
             VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
             VkDebugUtilsMessageTypeFlagsEXT messageType,
@@ -71,9 +86,18 @@ protected:
     std::shared_ptr<VkWrap::VulkanPhysicalDevice> m_physDevice;
     std::shared_ptr<VkWrap::VulkanLogicalDevice> m_device;
     std::shared_ptr<VkWrap::VulkanSurface> m_surface;
+    std::shared_ptr<VkWrap::VulkanSwapchain> m_swapchain;
 
+    std::vector<VkImage> m_images;
+    std::vector<VkWrap::VulkanImageView> m_views;
+
+    QueueFamilyIndices m_indices;
     VkWrap::VulkanQueue m_graphicQueue;
     VkWrap::VulkanQueue m_presentQueue;
+
+    std::shared_ptr<VkWrap::VulkanRenderPass> m_renderPass;
+    std::shared_ptr<VkWrap::VulkanPipelineLayout> m_pipelineLayout;
+    std::shared_ptr<VkWrap::VulkanPipeline> m_pipeline;
 };
 
 #endif // GOLAPP_H

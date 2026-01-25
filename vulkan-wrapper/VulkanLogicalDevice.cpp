@@ -56,6 +56,11 @@ VulkanLogicalDevice::~VulkanLogicalDevice()
     vkDestroyDevice(m_device, nullptr);
 }
 
+VkDevice VulkanLogicalDevice::rawHandle()
+{
+    return m_device;
+}
+
 VkQueue VulkanLogicalDevice::getQueue(uint32_t queueFamilyIndex, uint32_t queueIndex)
 {
     VkQueue output = VK_NULL_HANDLE;

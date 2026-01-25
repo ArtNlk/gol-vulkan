@@ -1,4 +1,9 @@
 #include "golapp.h"
+#include "VulkanPipeline.h"
+#include "VulkanPipelineLayout.h"
+#include "VulkanRenderPass.h"
+#include "VulkanShaderModule.h"
+#include "VulkanSwapchain.h"
 
 #include <algorithm>
 #include <cstring>
@@ -7,6 +12,7 @@
 #include <stdexcept>
 #include <vector>
 #include <iostream>
+#include <vulkan/vulkan_core.h>
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -75,6 +81,12 @@ void GolApp::init()
     pickPhysicalDevice();
 
     createLogicalDevice();
+
+    createSwapchain();
+
+    createRenderPass();
+
+    createPipeline();
 }
 
 void GolApp::initDebugCallback()
@@ -161,6 +173,12 @@ int GolApp::rateDeviceSuitability(VkWrap::VulkanPhysicalDevice &dev)
         }
     }
 
+    VkWrap::VulkanSurface::SwapChainSupportDetails swapChainSupport = m_surface->getDeviceSwapchainCapabilities(dev.rawHandle());
+    if(swapChainSupport.formats.empty() || swapChainSupport.presentModes.empty())
+    {
+        return 0;
+    }
+
     // Discrete GPUs have a significant performance advantage
     if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
        score += 1000;
@@ -184,6 +202,150 @@ void GolApp::createSurface()
     }
 
     m_surface = std::make_shared<VkWrap::VulkanSurface>(surface, GVKInstance::vki()->rawInstance());
+}
+
+void GolApp::createSwapchain()
+{
+    VkWrap::VulkanSurface::SwapChainSupportDetails swapChainSupport =
+            m_surface->getDeviceSwapchainCapabilities(m_physDevice->rawHandle());
+
+    VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
+    VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
+    VkExtent2D extent = chooseSwapExtent(swapChainSupport.capabilities);
+
+    uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
+
+    if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
+        imageCount = swapChainSupport.capabilities.maxImageCount;
+    }
+
+    std::vector<uint32_t> indices(m_indices.getUniquefamilies().begin(),m_indices.getUniquefamilies().end());
+
+    m_swapchain = std::make_shared<VkWrap::VulkanSwapchain>(m_device->rawHandle(), m_surface->rawHandle(),
+                                                            surfaceFormat, presentMode, swapChainSupport.capabilities, extent,
+                                                            imageCount, indices);
+
+    m_images = m_swapchain->getImages();
+    m_views.reserve(m_images.size());
+
+    for(VkImage img : m_images)
+    {
+        m_views.emplace_back(m_device->rawHandle(),img, m_swapchain->format());
+    }
+}
+
+VkSurfaceFormatKHR GolApp::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats)
+{
+    for (const auto& availableFormat : availableFormats)
+    {
+        if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+        {
+            return availableFormat;
+        }
+    }
+
+    return availableFormats[0];
+}
+
+VkPresentModeKHR GolApp::chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes)
+{
+    for (const auto& availablePresentMode : availablePresentModes)
+    {
+        if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR)
+        {
+            return availablePresentMode;
+        }
+    }
+
+    return VK_PRESENT_MODE_FIFO_KHR;
+}
+
+VkExtent2D GolApp::chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities)
+{
+    if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
+    {
+            return capabilities.currentExtent;
+    }
+
+    int width, height;
+    glfwGetFramebufferSize(m_window, &width, &height);
+
+    VkExtent2D actualExtent = {
+        static_cast<uint32_t>(width),
+        static_cast<uint32_t>(height)
+    };
+
+    actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+    actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+
+    return actualExtent;
+}
+
+void GolApp::createRenderPass()
+{
+    VkAttachmentDescription colorAttachment{};
+    colorAttachment.format = m_swapchain->format();
+    colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    VkAttachmentReference colorAttachmentRef{};
+    colorAttachmentRef.attachment = 0;
+    colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkSubpassDescription subpass{};
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.colorAttachmentCount = 1;
+    subpass.pColorAttachments = &colorAttachmentRef;
+
+    m_renderPass = std::make_shared<VkWrap::VulkanRenderPass>(m_device->rawHandle(),
+                                                              std::vector<VkAttachmentDescription>({colorAttachment}),
+                                                              std::vector<VkSubpassDescription>({subpass}));
+}
+
+void GolApp::createPipeline()
+{
+    m_pipelineLayout = std::make_shared<VkWrap::VulkanPipelineLayout>(m_device->rawHandle());
+
+    VkWrap::VulkanShaderModule vertModule(m_device->rawHandle(), "./shaders/vertex.vert.spv");
+    VkWrap::VulkanShaderModule fragModule(m_device->rawHandle(), "./shaders/frament.frag.spv");
+
+    VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+    vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    vertexInputInfo.vertexBindingDescriptionCount = 0;
+    vertexInputInfo.pVertexBindingDescriptions = nullptr; // Optional
+    vertexInputInfo.vertexAttributeDescriptionCount = 0;
+    vertexInputInfo.pVertexAttributeDescriptions = nullptr; // Optional
+
+    VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+    inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+    VkViewport viewport{};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = (float) m_swapchain->extent().width;
+    viewport.height = (float) m_swapchain->extent().height;
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+
+    VkRect2D scissor{};
+    scissor.offset = {0, 0};
+    scissor.extent = m_swapchain->extent();
+
+    std::vector<VkPipelineShaderStageCreateInfo> shaderStages = {vertModule.getStageCreateInfo(), fragModule.getStageCreateInfo()};
+
+    m_pipeline = std::make_shared<VkWrap::VulkanPipeline>(m_device->rawHandle(),
+                                                         m_pipelineLayout->rawHandle(),
+                                                         m_renderPass->rawHandle(),
+                                                         shaderStages,
+                                                         vertexInputInfo, inputAssembly,
+                                                         viewport, scissor);
 }
 
 GolApp::QueueFamilyIndices GolApp::getDeviceIndices(VkWrap::VulkanPhysicalDevice& dev)
@@ -212,12 +374,12 @@ GolApp::QueueFamilyIndices GolApp::getDeviceIndices(VkWrap::VulkanPhysicalDevice
 
 void GolApp::createLogicalDevice()
 {
-    QueueFamilyIndices indices = getDeviceIndices(*m_physDevice.get());
+    m_indices = getDeviceIndices(*m_physDevice.get());
 
     std::vector<VkDeviceQueueCreateInfo> queueInfos;
 
     float queuePriority = 1.0f;
-    for (uint32_t queueFamily : indices.getUniquefamilies()) {
+    for (uint32_t queueFamily : m_indices.getUniquefamilies()) {
         VkDeviceQueueCreateInfo queueCreateInfo{};
         queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
         queueCreateInfo.queueFamilyIndex = queueFamily;
@@ -236,8 +398,8 @@ void GolApp::createLogicalDevice()
                                                              getRequiredDeviceExtensions(),
                                                              validationLayers);
 
-    m_graphicQueue = m_device->getQueue(indices.graphicFamilyIndex.value());
-    m_presentQueue = m_device->getQueue(indices.presentFamilyIndex.value());
+    m_graphicQueue = m_device->getQueue(m_indices.graphicFamilyIndex.value());
+    m_presentQueue = m_device->getQueue(m_indices.presentFamilyIndex.value());
 }
 
 VkBool32 GolApp::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData) {
@@ -259,7 +421,7 @@ std::vector<std::string> GolApp::getRequiredInstanceExtensions()
 
     for(size_t i = 0; i < glfwExtensionCount; i++)
     {
-        extensions.push_back(std::string(glfwExtensions[i]));
+        extensions.emplace_back(glfwExtensions[i]);
     }
 
     return extensions;

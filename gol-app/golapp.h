@@ -1,10 +1,8 @@
 #ifndef GOLAPP_H
 #define GOLAPP_H
 
-#include "VulkanPipeline.h"
-#include "VulkanPipelineLayout.h"
-#include "VulkanQueue.h"
-#include "VulkanRenderPass.h"
+#include "VulkanCommandBuffer.h"
+#include "VulkanCommandPool.h"
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -70,6 +68,14 @@ protected:
 
     void createPipeline();
 
+    void createFramebuffers();
+
+    void createCommandPool();
+
+    void createCommandBuffer();
+
+    void drawFrame();
+
     static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
             VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
             VkDebugUtilsMessageTypeFlagsEXT messageType,
@@ -98,6 +104,11 @@ protected:
     std::shared_ptr<VkWrap::VulkanRenderPass> m_renderPass;
     std::shared_ptr<VkWrap::VulkanPipelineLayout> m_pipelineLayout;
     std::shared_ptr<VkWrap::VulkanPipeline> m_pipeline;
+
+    std::vector<VkWrap::VulkanFramebuffer> m_framebuffers;
+
+    std::shared_ptr<VkWrap::VulkanCommandPool> m_commandPool;
+    VkWrap::VulkanCommandBuffer m_commandBuffer;
 };
 
 #endif // GOLAPP_H

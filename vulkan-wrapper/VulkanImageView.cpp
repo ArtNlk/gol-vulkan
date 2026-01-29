@@ -36,4 +36,9 @@ VulkanImageView::~VulkanImageView()
     vkDestroyImageView(m_device, m_view, nullptr);
 }
 
+VkImageView VulkanImageView::rawHandle() const
+{
+    return m_view;
+}
+
 }

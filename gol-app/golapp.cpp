@@ -1,4 +1,5 @@
 #include "golapp.h"
+#include "VulkanCommandPool.h"
 #include "VulkanPipeline.h"
 #include "VulkanPipelineLayout.h"
 #include "VulkanRenderPass.h"
@@ -36,6 +37,7 @@ void GolApp::run()
     while (!glfwWindowShouldClose(m_window))
     {
         glfwPollEvents();
+        drawFrame();
     }
 }
 
@@ -87,6 +89,12 @@ void GolApp::init()
     createRenderPass();
 
     createPipeline();
+
+    createFramebuffers();
+
+    createCommandPool();
+
+    createCommandBuffer();
 }
 
 void GolApp::initDebugCallback()
@@ -346,6 +354,30 @@ void GolApp::createPipeline()
                                                          shaderStages,
                                                          vertexInputInfo, inputAssembly,
                                                          viewport, scissor);
+}
+
+void GolApp::createFramebuffers()
+{
+    for (size_t i = 0; i < m_views.size(); i++)
+    {
+        m_framebuffers.emplace_back(m_device->rawHandle(), m_renderPass->rawHandle(),
+                                    std::vector<VkImageView>({m_views[i].rawHandle()}), m_swapchain->extent());
+    }
+}
+
+void GolApp::createCommandPool()
+{
+    m_commandPool = std::make_shared<VkWrap::VulkanCommandPool>(m_device->rawHandle(),m_indices.graphicFamilyIndex.value());
+}
+
+void GolApp::createCommandBuffer()
+{
+    m_commandBuffer = m_commandPool->createCommandBuffer();
+}
+
+void GolApp::drawFrame()
+{
+
 }
 
 GolApp::QueueFamilyIndices GolApp::getDeviceIndices(VkWrap::VulkanPhysicalDevice& dev)

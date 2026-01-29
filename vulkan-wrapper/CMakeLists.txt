@@ -13,6 +13,9 @@ set(HEADERS VKWrap.h
     VulkanPipeline.h
     VulkanPipelineLayout.h
     VulkanRenderPass.h
+    VulkanFramebuffer.h
+    VulkanCommandPool.h
+    VulkanCommandBuffer.h
 )
 
 set(SOURCES
@@ -28,6 +31,9 @@ set(SOURCES
     VulkanPipeline.cpp
     VulkanPipelineLayout.cpp
     VulkanRenderPass.cpp
+    VulkanFramebuffer.cpp
+    VulkanCommandPool.cpp
+    VulkanCommandBuffer.cpp
 )
 
 add_library(VulkanWrapper ${SOURCES} ${HEADERS})

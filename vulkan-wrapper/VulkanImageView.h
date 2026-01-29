@@ -12,6 +12,8 @@ public:
     VulkanImageView(VkDevice device, VkImage image, VkFormat format);
     ~VulkanImageView();
 
+    VkImageView rawHandle() const;
+
 protected:
     VkImageView m_view;
     VkDevice m_device;

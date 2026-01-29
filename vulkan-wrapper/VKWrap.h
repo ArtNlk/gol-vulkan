@@ -10,3 +10,4 @@
 #include "VulkanPipeline.h"
 #include "VulkanPipelineLayout.h"
 #include "VulkanRenderPass.h"
+#include "VulkanFramebuffer.h"

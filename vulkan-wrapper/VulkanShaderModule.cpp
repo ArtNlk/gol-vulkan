@@ -33,8 +33,10 @@ VulkanShaderModule::VulkanShaderModule(VkDevice device, const std::string &shade
         throw std::runtime_error("failed to create shader module!");
     }
 
+    m_createInfo.pNext = nullptr;
+    m_createInfo.pSpecializationInfo = nullptr;
     m_createInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    m_createInfo.stage = shaderPath.ends_with(".vert")? VK_SHADER_STAGE_VERTEX_BIT : VK_SHADER_STAGE_FRAGMENT_BIT;
+    m_createInfo.stage = shaderPath.ends_with(".vert.spv")? VK_SHADER_STAGE_VERTEX_BIT : VK_SHADER_STAGE_FRAGMENT_BIT;
     m_createInfo.module = m_shaderModule;
     m_createInfo.pName = "main";
 }

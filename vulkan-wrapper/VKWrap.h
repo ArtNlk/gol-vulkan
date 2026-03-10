@@ -11,3 +11,7 @@
 #include "VulkanPipelineLayout.h"
 #include "VulkanRenderPass.h"
 #include "VulkanFramebuffer.h"
+#include "VulkanCommandPool.h"
+#include "VulkanCommandBuffer.h"
+#include "VulkanSemaphore.h"
+#include "VulkanFence.h"

@@ -13,6 +13,10 @@ public:
 
     VulkanCommandBuffer(VkDevice device, VkCommandPool pool);
 
+    VkCommandBuffer rawHandle();
+
+    void resetBuffer(bool releaseResources = false);
+
     void beginBuffer();
 
     void beginRenderPass(VkRenderPass renderPass,

@@ -106,4 +106,9 @@ VulkanPipeline::~VulkanPipeline()
     vkDestroyPipeline(m_device, m_pipeline, nullptr);
 }
 
+VkPipeline VulkanPipeline::rawHandle() const
+{
+    return m_pipeline;
+}
+
 }

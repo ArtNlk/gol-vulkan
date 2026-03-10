@@ -3,6 +3,7 @@
 
 #include "VulkanCommandBuffer.h"
 #include "VulkanCommandPool.h"
+#include "VulkanSemaphore.h"
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -74,7 +75,11 @@ protected:
 
     void createCommandBuffer();
 
+    void createSync();
+
     void drawFrame();
+
+    void recordCommandBuffer(uint32_t imageIndex);
 
     static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
             VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -109,6 +114,10 @@ protected:
 
     std::shared_ptr<VkWrap::VulkanCommandPool> m_commandPool;
     VkWrap::VulkanCommandBuffer m_commandBuffer;
+
+    std::shared_ptr<VkWrap::VulkanSemaphore> m_imageAvailableSemaphore;
+    std::shared_ptr<VkWrap::VulkanSemaphore> m_renderFinishedSemaphore;
+    std::shared_ptr<VkWrap::VulkanFence> m_inFlightFence;
 };
 
 #endif // GOLAPP_H

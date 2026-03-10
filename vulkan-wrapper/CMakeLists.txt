@@ -16,6 +16,8 @@ set(HEADERS VKWrap.h
     VulkanFramebuffer.h
     VulkanCommandPool.h
     VulkanCommandBuffer.h
+    VulkanSemaphore.h
+    VulkanFence.h
 )
 
 set(SOURCES
@@ -34,6 +36,8 @@ set(SOURCES
     VulkanFramebuffer.cpp
     VulkanCommandPool.cpp
     VulkanCommandBuffer.cpp
+    VulkanSemaphore.cpp
+    VulkanFence.cpp
 )
 
 add_library(VulkanWrapper ${SOURCES} ${HEADERS})

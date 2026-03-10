@@ -19,6 +19,8 @@ public:
                    VkViewport viewport, VkRect2D scissor);
     ~VulkanPipeline();
 
+    VkPipeline rawHandle() const;
+
 protected:
     VkPipeline m_pipeline;
     VkDevice m_device;

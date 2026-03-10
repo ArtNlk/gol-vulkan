@@ -54,6 +54,11 @@ VulkanSwapchain::~VulkanSwapchain()
     vkDestroySwapchainKHR(m_device, m_swapchain, nullptr);
 }
 
+VkSwapchainKHR VulkanSwapchain::rawHandle()
+{
+    return m_swapchain;
+}
+
 std::vector<VkImage> VulkanSwapchain::getImages() const
 {
     std::vector<VkImage> output;
@@ -64,6 +69,14 @@ std::vector<VkImage> VulkanSwapchain::getImages() const
     vkGetSwapchainImagesKHR(m_device, m_swapchain, &imageCount, output.data());
 
     return output;
+}
+
+uint32_t VulkanSwapchain::getNextImage(VkSemaphore semaphore, VkFence fence, uint64_t timeoutNs)
+{
+    uint32_t imageIndex = 0;
+    vkAcquireNextImageKHR(m_device, m_swapchain, timeoutNs, semaphore, fence, &imageIndex);
+
+    return imageIndex;
 }
 
 VkFormat VulkanSwapchain::format() const

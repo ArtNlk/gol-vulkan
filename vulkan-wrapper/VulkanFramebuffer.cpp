@@ -5,7 +5,8 @@
 namespace VkWrap
 {
 
-VulkanFramebuffer::VulkanFramebuffer(VkDevice device, VkRenderPass renderPass, std::vector<VkImageView> attachments, VkExtent2D size)
+VulkanFramebuffer::VulkanFramebuffer(VkDevice device, VkRenderPass renderPass, std::vector<VkImageView> attachments, VkExtent2D size):
+    m_device(device)
 {
     VkFramebufferCreateInfo framebufferInfo{};
     framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -16,7 +17,7 @@ VulkanFramebuffer::VulkanFramebuffer(VkDevice device, VkRenderPass renderPass, s
     framebufferInfo.height = size.height;
     framebufferInfo.layers = 1;
 
-    if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &m_framebuffer) != VK_SUCCESS)
+    if (vkCreateFramebuffer(m_device, &framebufferInfo, nullptr, &m_framebuffer) != VK_SUCCESS)
     {
         throw std::runtime_error("failed to create framebuffer!");
     }
@@ -25,6 +26,11 @@ VulkanFramebuffer::VulkanFramebuffer(VkDevice device, VkRenderPass renderPass, s
 VulkanFramebuffer::~VulkanFramebuffer()
 {
     vkDestroyFramebuffer(m_device, m_framebuffer, nullptr);
+}
+
+VkFramebuffer VulkanFramebuffer::rawHandle() const
+{
+    return m_framebuffer;
 }
 
 }

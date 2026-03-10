@@ -39,6 +39,8 @@ void GolApp::run()
         glfwPollEvents();
         drawFrame();
     }
+
+    m_device->waitIdle();
 }
 
 void GolApp::init()
@@ -95,6 +97,8 @@ void GolApp::init()
     createCommandPool();
 
     createCommandBuffer();
+
+    createSync();
 }
 
 void GolApp::initDebugCallback()
@@ -227,7 +231,9 @@ void GolApp::createSwapchain()
         imageCount = swapChainSupport.capabilities.maxImageCount;
     }
 
-    std::vector<uint32_t> indices(m_indices.getUniquefamilies().begin(),m_indices.getUniquefamilies().end());
+    std::set<uint32_t> families = m_indices.getUniquefamilies();
+
+    std::vector<uint32_t> indices(families.begin(),families.end());
 
     m_swapchain = std::make_shared<VkWrap::VulkanSwapchain>(m_device->rawHandle(), m_surface->rawHandle(),
                                                             surfaceFormat, presentMode, swapChainSupport.capabilities, extent,
@@ -310,9 +316,18 @@ void GolApp::createRenderPass()
     subpass.colorAttachmentCount = 1;
     subpass.pColorAttachments = &colorAttachmentRef;
 
+    VkSubpassDependency dependency{};
+    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependency.dstSubpass = 0;
+    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.srcAccessMask = 0;
+    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
     m_renderPass = std::make_shared<VkWrap::VulkanRenderPass>(m_device->rawHandle(),
                                                               std::vector<VkAttachmentDescription>({colorAttachment}),
-                                                              std::vector<VkSubpassDescription>({subpass}));
+                                                              std::vector<VkSubpassDescription>({subpass}),
+                                                              std::vector<VkSubpassDependency>({dependency}));
 }
 
 void GolApp::createPipeline()
@@ -320,7 +335,7 @@ void GolApp::createPipeline()
     m_pipelineLayout = std::make_shared<VkWrap::VulkanPipelineLayout>(m_device->rawHandle());
 
     VkWrap::VulkanShaderModule vertModule(m_device->rawHandle(), "./shaders/vertex.vert.spv");
-    VkWrap::VulkanShaderModule fragModule(m_device->rawHandle(), "./shaders/frament.frag.spv");
+    VkWrap::VulkanShaderModule fragModule(m_device->rawHandle(), "./shaders/fragment.frag.spv");
 
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -358,6 +373,7 @@ void GolApp::createPipeline()
 
 void GolApp::createFramebuffers()
 {
+    m_framebuffers.reserve(m_views.size());
     for (size_t i = 0; i < m_views.size(); i++)
     {
         m_framebuffers.emplace_back(m_device->rawHandle(), m_renderPass->rawHandle(),
@@ -375,9 +391,53 @@ void GolApp::createCommandBuffer()
     m_commandBuffer = m_commandPool->createCommandBuffer();
 }
 
+void GolApp::createSync()
+{
+    m_imageAvailableSemaphore = std::make_shared<VkWrap::VulkanSemaphore>(m_device->rawHandle());
+    m_renderFinishedSemaphore = std::make_shared<VkWrap::VulkanSemaphore>(m_device->rawHandle());
+    m_inFlightFence = std::make_shared<VkWrap::VulkanFence>(m_device->rawHandle(), true);
+}
+
 void GolApp::drawFrame()
 {
+    m_inFlightFence->wait();
+    m_inFlightFence->resetFence();
 
+    uint32_t imageIndex = m_swapchain->getNextImage(m_imageAvailableSemaphore->rawHandle());
+
+    m_commandBuffer.resetBuffer();
+
+    recordCommandBuffer(imageIndex);
+
+    m_graphicQueue.submit(m_imageAvailableSemaphore->rawHandle(),m_renderFinishedSemaphore->rawHandle(),
+                          m_inFlightFence->rawHandle(),VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                          m_commandBuffer.rawHandle());
+
+    m_presentQueue.present(m_renderFinishedSemaphore->rawHandle(),m_swapchain->rawHandle(), imageIndex);
+}
+
+void GolApp::recordCommandBuffer(uint32_t imageIndex)
+{
+    VkExtent2D swapExtent = m_swapchain->extent();
+
+    m_commandBuffer.beginBuffer();
+
+    m_commandBuffer.beginRenderPass(m_renderPass->rawHandle(), m_framebuffers[imageIndex].rawHandle(),swapExtent);
+
+    m_commandBuffer.bindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline->rawHandle());
+
+    m_commandBuffer.setScissor({{0, 0}, {swapExtent}});
+
+    m_commandBuffer.setViewport({0,0,
+                                 static_cast<float>(swapExtent.width),
+                                 static_cast<float>(swapExtent.height),
+                                 0.f, 1.f});
+
+    m_commandBuffer.draw(3);
+
+    m_commandBuffer.endRenderpass();
+
+    m_commandBuffer.endBuffer();
 }
 
 GolApp::QueueFamilyIndices GolApp::getDeviceIndices(VkWrap::VulkanPhysicalDevice& dev)

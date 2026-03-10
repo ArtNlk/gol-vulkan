@@ -8,7 +8,8 @@ namespace VkWrap
 
 VulkanRenderPass::VulkanRenderPass(VkDevice device,
                                    std::vector<VkAttachmentDescription> attachments,
-                                   std::vector<VkSubpassDescription> subpasses)
+                                   std::vector<VkSubpassDescription> subpasses, std::vector<VkSubpassDependency> dependencies):
+    m_device(device)
 {
     VkRenderPassCreateInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -16,6 +17,9 @@ VulkanRenderPass::VulkanRenderPass(VkDevice device,
     renderPassInfo.pAttachments = attachments.data();
     renderPassInfo.subpassCount = subpasses.size();
     renderPassInfo.pSubpasses = subpasses.data();
+
+    renderPassInfo.dependencyCount = dependencies.size();
+    renderPassInfo.pDependencies = dependencies.data();
 
     if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &m_renderPass) != VK_SUCCESS) {
         throw std::runtime_error("failed to create render pass!");

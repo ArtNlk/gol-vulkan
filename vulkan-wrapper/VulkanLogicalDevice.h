@@ -22,6 +22,8 @@ public:
 
     VkQueue getQueue(uint32_t queueFamilyIndex, uint32_t queueIndex = 0);
 
+    void waitIdle();
+
 protected:
     VkDevice m_device;
 };

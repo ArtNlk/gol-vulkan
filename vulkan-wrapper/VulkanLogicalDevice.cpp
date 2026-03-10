@@ -70,4 +70,9 @@ VkQueue VulkanLogicalDevice::getQueue(uint32_t queueFamilyIndex, uint32_t queueI
     return output;
 }
 
+void VulkanLogicalDevice::waitIdle()
+{
+    vkDeviceWaitIdle(m_device);
+}
+
 }

@@ -1,6 +1,7 @@
 #ifndef VULKANSWAPCHAIN_H
 #define VULKANSWAPCHAIN_H
 
+#include <limits>
 #include <vulkan/vulkan.h>
 
 #include <vector>
@@ -21,7 +22,12 @@ public:
 
     ~VulkanSwapchain();
 
+    VkSwapchainKHR rawHandle();
+
     std::vector<VkImage> getImages() const;
+
+    uint32_t getNextImage(VkSemaphore semaphore = VK_NULL_HANDLE, VkFence fence = VK_NULL_HANDLE,
+                          uint64_t timeoutNs = std::numeric_limits<uint64_t>::max());
 
     VkFormat format() const;
     VkExtent2D extent() const;

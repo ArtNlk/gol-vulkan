@@ -13,7 +13,8 @@ class VulkanRenderPass
 public:
     VulkanRenderPass(VkDevice device,
                      std::vector<VkAttachmentDescription> attachments,
-                     std::vector<VkSubpassDescription> subpasses);
+                     std::vector<VkSubpassDescription> subpasses,
+                     std::vector<VkSubpassDependency> dependencies = {});
     ~VulkanRenderPass();
 
     VkRenderPass rawHandle() const;

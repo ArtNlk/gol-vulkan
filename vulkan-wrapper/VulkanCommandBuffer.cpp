@@ -1,6 +1,7 @@
 #include "VulkanCommandBuffer.h"
 
 #include <stdexcept>
+#include <vulkan/vulkan_core.h>
 
 namespace VkWrap
 {
@@ -24,6 +25,16 @@ VulkanCommandBuffer::VulkanCommandBuffer(VkDevice device, VkCommandPool pool) :
     if (vkAllocateCommandBuffers(m_device, &allocInfo, &m_buffer) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate command buffers!");
     }
+}
+
+VkCommandBuffer VulkanCommandBuffer::rawHandle()
+{
+    return m_buffer;
+}
+
+void VulkanCommandBuffer::resetBuffer(bool releaseResources)
+{
+    vkResetCommandBuffer(m_buffer, releaseResources? VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT : 0);
 }
 
 void VulkanCommandBuffer::beginBuffer()

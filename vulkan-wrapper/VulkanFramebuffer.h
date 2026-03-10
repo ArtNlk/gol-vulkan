@@ -14,6 +14,8 @@ public:
     VulkanFramebuffer(VkDevice device, VkRenderPass renderPass, std::vector<VkImageView> attachments, VkExtent2D size);
     ~VulkanFramebuffer();
 
+    VkFramebuffer rawHandle() const;
+
 protected:
     VkFramebuffer m_framebuffer;
     VkDevice m_device;

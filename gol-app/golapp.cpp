@@ -21,7 +21,9 @@
 #include "GVKInstance.h"
 
 GolApp::GolApp() :
-    m_window(nullptr)
+    m_window(nullptr),
+    m_maxFramesInFlight(3),
+    m_currentFrame(0)
 {
     init();
 }
@@ -96,9 +98,9 @@ void GolApp::init()
 
     createCommandPool();
 
-    createCommandBuffer();
+    createCommandBuffers();
 
-    createSync();
+    createSyncObjects();
 }
 
 void GolApp::initDebugCallback()
@@ -386,58 +388,72 @@ void GolApp::createCommandPool()
     m_commandPool = std::make_shared<VkWrap::VulkanCommandPool>(m_device->rawHandle(),m_indices.graphicFamilyIndex.value());
 }
 
-void GolApp::createCommandBuffer()
+void GolApp::createCommandBuffers()
 {
-    m_commandBuffer = m_commandPool->createCommandBuffer();
+    m_commandBuffers.reserve(m_maxFramesInFlight);
+    for(int i = 0; i < m_maxFramesInFlight; i++)
+    {
+        m_commandBuffers.emplace_back(m_commandPool->createCommandBuffer());
+    }
 }
 
-void GolApp::createSync()
+void GolApp::createSyncObjects()
 {
-    m_imageAvailableSemaphore = std::make_shared<VkWrap::VulkanSemaphore>(m_device->rawHandle());
-    m_renderFinishedSemaphore = std::make_shared<VkWrap::VulkanSemaphore>(m_device->rawHandle());
-    m_inFlightFence = std::make_shared<VkWrap::VulkanFence>(m_device->rawHandle(), true);
+    m_imageAvailableSemaphores.reserve(m_maxFramesInFlight);
+    m_renderFinishedSemaphores.reserve(m_maxFramesInFlight);
+    m_inFlightFences.reserve(m_maxFramesInFlight);
+
+    for(int i = 0; i < m_maxFramesInFlight; i++)
+    {
+        m_imageAvailableSemaphores.emplace_back(std::make_shared<VkWrap::VulkanSemaphore>(m_device->rawHandle()));
+        m_renderFinishedSemaphores.emplace_back(std::make_shared<VkWrap::VulkanSemaphore>(m_device->rawHandle()));
+        m_inFlightFences.emplace_back(std::make_shared<VkWrap::VulkanFence>(m_device->rawHandle(), true));
+    }
 }
 
 void GolApp::drawFrame()
 {
-    m_inFlightFence->wait();
-    m_inFlightFence->resetFence();
+    m_inFlightFences[m_currentFrame]->wait();
+    m_inFlightFences[m_currentFrame]->resetFence();
 
-    uint32_t imageIndex = m_swapchain->getNextImage(m_imageAvailableSemaphore->rawHandle());
+    uint32_t imageIndex = m_swapchain->getNextImage(m_imageAvailableSemaphores[m_currentFrame]->rawHandle());
 
-    m_commandBuffer.resetBuffer();
+    m_commandBuffers[m_currentFrame].resetBuffer();
 
     recordCommandBuffer(imageIndex);
 
-    m_graphicQueue.submit(m_imageAvailableSemaphore->rawHandle(),m_renderFinishedSemaphore->rawHandle(),
-                          m_inFlightFence->rawHandle(),VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                          m_commandBuffer.rawHandle());
+    m_graphicQueue.submit(m_imageAvailableSemaphores[m_currentFrame]->rawHandle(),
+                          m_renderFinishedSemaphores[m_currentFrame]->rawHandle(),
+                          m_inFlightFences[m_currentFrame]->rawHandle(),VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                          m_commandBuffers[m_currentFrame].rawHandle());
 
-    m_presentQueue.present(m_renderFinishedSemaphore->rawHandle(),m_swapchain->rawHandle(), imageIndex);
+    m_presentQueue.present(m_renderFinishedSemaphores[m_currentFrame]->rawHandle(),m_swapchain->rawHandle(), imageIndex);
+
+    m_currentFrame = (m_currentFrame + 1) % m_maxFramesInFlight;
 }
 
 void GolApp::recordCommandBuffer(uint32_t imageIndex)
 {
     VkExtent2D swapExtent = m_swapchain->extent();
 
-    m_commandBuffer.beginBuffer();
+    m_commandBuffers[m_currentFrame].beginBuffer();
 
-    m_commandBuffer.beginRenderPass(m_renderPass->rawHandle(), m_framebuffers[imageIndex].rawHandle(),swapExtent);
+    m_commandBuffers[m_currentFrame].beginRenderPass(m_renderPass->rawHandle(), m_framebuffers[imageIndex].rawHandle(),swapExtent);
 
-    m_commandBuffer.bindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline->rawHandle());
+    m_commandBuffers[m_currentFrame].bindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline->rawHandle());
 
-    m_commandBuffer.setScissor({{0, 0}, {swapExtent}});
+    m_commandBuffers[m_currentFrame].setScissor({{0, 0}, {swapExtent}});
 
-    m_commandBuffer.setViewport({0,0,
+    m_commandBuffers[m_currentFrame].setViewport({0,0,
                                  static_cast<float>(swapExtent.width),
                                  static_cast<float>(swapExtent.height),
                                  0.f, 1.f});
 
-    m_commandBuffer.draw(3);
+    m_commandBuffers[m_currentFrame].draw(3);
 
-    m_commandBuffer.endRenderpass();
+    m_commandBuffers[m_currentFrame].endRenderpass();
 
-    m_commandBuffer.endBuffer();
+    m_commandBuffers[m_currentFrame].endBuffer();
 }
 
 GolApp::QueueFamilyIndices GolApp::getDeviceIndices(VkWrap::VulkanPhysicalDevice& dev)

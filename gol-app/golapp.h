@@ -73,9 +73,9 @@ protected:
 
     void createCommandPool();
 
-    void createCommandBuffer();
+    void createCommandBuffers();
 
-    void createSync();
+    void createSyncObjects();
 
     void drawFrame();
 
@@ -113,11 +113,14 @@ protected:
     std::vector<VkWrap::VulkanFramebuffer> m_framebuffers;
 
     std::shared_ptr<VkWrap::VulkanCommandPool> m_commandPool;
-    VkWrap::VulkanCommandBuffer m_commandBuffer;
+    std::vector<VkWrap::VulkanCommandBuffer> m_commandBuffers;
 
-    std::shared_ptr<VkWrap::VulkanSemaphore> m_imageAvailableSemaphore;
-    std::shared_ptr<VkWrap::VulkanSemaphore> m_renderFinishedSemaphore;
-    std::shared_ptr<VkWrap::VulkanFence> m_inFlightFence;
+    std::vector<std::shared_ptr<VkWrap::VulkanSemaphore>> m_imageAvailableSemaphores;
+    std::vector<std::shared_ptr<VkWrap::VulkanSemaphore>> m_renderFinishedSemaphores;
+    std::vector<std::shared_ptr<VkWrap::VulkanFence>> m_inFlightFences;
+
+    int m_maxFramesInFlight;
+    int m_currentFrame;
 };
 
 #endif // GOLAPP_H

@@ -30,7 +30,7 @@ void VulkanQueue::submit(VkSemaphore waitSemaphore, VkSemaphore signalSemaphore,
     }
 }
 
-void VulkanQueue::present(VkSemaphore semaphore, VkSwapchainKHR swapchain, uint32_t imageIdx)
+VkResult VulkanQueue::present(VkSemaphore semaphore, VkSwapchainKHR swapchain, uint32_t imageIdx)
 {
     VkPresentInfoKHR presentInfo{};
     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -44,7 +44,7 @@ void VulkanQueue::present(VkSemaphore semaphore, VkSwapchainKHR swapchain, uint3
 
     presentInfo.pResults = nullptr; // Optional
 
-    vkQueuePresentKHR(m_queue, &presentInfo);
+    return vkQueuePresentKHR(m_queue, &presentInfo);
 }
 
 }

@@ -5,6 +5,7 @@
 #include <vulkan/vulkan.h>
 
 #include <vector>
+#include <expected>
 
 namespace VkWrap
 {
@@ -26,7 +27,7 @@ public:
 
     std::vector<VkImage> getImages() const;
 
-    uint32_t getNextImage(VkSemaphore semaphore = VK_NULL_HANDLE, VkFence fence = VK_NULL_HANDLE,
+    std::expected<uint32_t, VkResult> getNextImage(VkSemaphore semaphore = VK_NULL_HANDLE, VkFence fence = VK_NULL_HANDLE,
                           uint64_t timeoutNs = std::numeric_limits<uint64_t>::max());
 
     VkFormat format() const;

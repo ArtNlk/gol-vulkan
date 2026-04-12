@@ -1,5 +1,6 @@
 #include "VulkanSwapchain.h"
 
+#include <expected>
 #include <stdexcept>
 
 namespace VkWrap
@@ -71,10 +72,14 @@ std::vector<VkImage> VulkanSwapchain::getImages() const
     return output;
 }
 
-uint32_t VulkanSwapchain::getNextImage(VkSemaphore semaphore, VkFence fence, uint64_t timeoutNs)
+std::expected<uint32_t, VkResult> VulkanSwapchain::getNextImage(VkSemaphore semaphore, VkFence fence, uint64_t timeoutNs)
 {
     uint32_t imageIndex = 0;
-    vkAcquireNextImageKHR(m_device, m_swapchain, timeoutNs, semaphore, fence, &imageIndex);
+    VkResult result = vkAcquireNextImageKHR(m_device, m_swapchain, timeoutNs, semaphore, fence, &imageIndex);
+
+    if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+        return std::unexpected(result);
+    }
 
     return imageIndex;
 }

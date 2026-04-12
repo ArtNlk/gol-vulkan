@@ -17,7 +17,7 @@ public:
                 VkFence fence, VkPipelineStageFlags stages,
                 VkCommandBuffer commandBuffer);
 
-    void present(VkSemaphore semaphore, VkSwapchainKHR swapchain, uint32_t imageIdx);
+    VkResult present(VkSemaphore semaphore, VkSwapchainKHR swapchain, uint32_t imageIdx);
 
 protected:
     VkQueue m_queue;

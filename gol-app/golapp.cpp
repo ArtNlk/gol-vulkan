@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <exception>
 #include <format>
 #include <memory>
 #include <stdexcept>
@@ -23,7 +24,8 @@
 GolApp::GolApp() :
     m_window(nullptr),
     m_maxFramesInFlight(3),
-    m_currentFrame(0)
+    m_currentFrame(0),
+    m_framebufferResized(false)
 {
     init();
 }
@@ -59,9 +61,12 @@ void GolApp::init()
     }
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+    //glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
     m_window = glfwCreateWindow(800,600,"GOL-app",nullptr,nullptr);
+    glfwSetWindowUserPointer(m_window, this);
+
+    glfwSetFramebufferSizeCallback(m_window, framebufferResizeCallback);
 
     std::vector<VkLayerProperties> availableLayers = VkWrap::VulkanInstance::getLayers();
 
@@ -250,6 +255,28 @@ void GolApp::createSwapchain()
     }
 }
 
+void GolApp::recreateSwapchain()
+{
+    int width = 0, height = 0;
+    glfwGetFramebufferSize(m_window, &width, &height);
+    while (width == 0 || height == 0)
+    {
+        glfwGetFramebufferSize(m_window, &width, &height);
+        glfwWaitEvents();
+    }
+
+    m_device->waitIdle();
+
+    m_framebuffers.clear();
+
+    m_views.clear();
+
+    m_swapchain.reset();
+
+    createSwapchain();
+    createFramebuffers();
+}
+
 VkSurfaceFormatKHR GolApp::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats)
 {
     for (const auto& availableFormat : availableFormats)
@@ -414,9 +441,26 @@ void GolApp::createSyncObjects()
 void GolApp::drawFrame()
 {
     m_inFlightFences[m_currentFrame]->wait();
+
+    uint32_t imageIndex = 0;
+
+    auto imageResult = m_swapchain->getNextImage(m_imageAvailableSemaphores[m_currentFrame]->rawHandle());
+
+    if(!imageResult.has_value())
+    {
+        if (imageResult.error() == VK_ERROR_OUT_OF_DATE_KHR)
+        {
+            recreateSwapchain();
+        }
+        else
+        {
+            throw std::runtime_error("Failed to get image!");
+        }
+    }
+
     m_inFlightFences[m_currentFrame]->resetFence();
 
-    uint32_t imageIndex = m_swapchain->getNextImage(m_imageAvailableSemaphores[m_currentFrame]->rawHandle());
+    imageIndex = imageResult.value();
 
     m_commandBuffers[m_currentFrame].resetBuffer();
 
@@ -427,7 +471,14 @@ void GolApp::drawFrame()
                           m_inFlightFences[m_currentFrame]->rawHandle(),VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
                           m_commandBuffers[m_currentFrame].rawHandle());
 
-    m_presentQueue.present(m_renderFinishedSemaphores[m_currentFrame]->rawHandle(),m_swapchain->rawHandle(), imageIndex);
+    VkResult presentResult = m_presentQueue.present(m_renderFinishedSemaphores[m_currentFrame]->rawHandle(),m_swapchain->rawHandle(), imageIndex);
+
+    if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR || m_framebufferResized) {
+        m_framebufferResized = false;
+        recreateSwapchain();
+    } else if (presentResult != VK_SUCCESS) {
+        throw std::runtime_error("Failed to present swap chain image!");
+    }
 
     m_currentFrame = (m_currentFrame + 1) % m_maxFramesInFlight;
 }
@@ -515,6 +566,12 @@ VkBool32 GolApp::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSev
     std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
 
     return VK_FALSE;
+}
+
+void GolApp::framebufferResizeCallback(GLFWwindow *window, int width, int height)
+{
+    GolApp* app = reinterpret_cast<GolApp*>(glfwGetWindowUserPointer(window));
+    app->m_framebufferResized = true;
 }
 
 std::vector<std::string> GolApp::getRequiredInstanceExtensions()

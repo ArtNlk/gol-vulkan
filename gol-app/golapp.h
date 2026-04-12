@@ -59,6 +59,8 @@ protected:
 
     void createSwapchain();
 
+    void recreateSwapchain();
+
     VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
 
     VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
@@ -86,6 +88,8 @@ protected:
             VkDebugUtilsMessageTypeFlagsEXT messageType,
             const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
             void* pUserData);
+
+    static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
 
     static std::vector<std::string> getRequiredInstanceExtensions();
 
@@ -121,6 +125,7 @@ protected:
 
     int m_maxFramesInFlight;
     int m_currentFrame;
+    bool m_framebufferResized;
 };
 
 #endif // GOLAPP_H

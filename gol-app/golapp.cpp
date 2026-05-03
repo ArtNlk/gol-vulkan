@@ -16,6 +16,9 @@
 #include <iostream>
 #include <vulkan/vulkan_core.h>
 
+#define VMA_IMPLEMENTATION
+#include <vk_mem_alloc.h>
+
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -23,6 +26,7 @@
 
 GolApp::GolApp() :
     m_window(nullptr),
+    m_allocator(VK_NULL_HANDLE),
     m_maxFramesInFlight(3),
     m_currentFrame(0),
     m_framebufferResized(false)
@@ -559,6 +563,21 @@ void GolApp::createLogicalDevice()
 
     m_graphicQueue = m_device->getQueue(m_indices.graphicFamilyIndex.value());
     m_presentQueue = m_device->getQueue(m_indices.presentFamilyIndex.value());
+
+    VmaVulkanFunctions vkFunctions{ .vkGetInstanceProcAddr = vkGetInstanceProcAddr,
+                .vkGetDeviceProcAddr = vkGetDeviceProcAddr,
+                .vkCreateImage = vkCreateImage };
+
+    VmaAllocatorCreateInfo allocatorCI{ .flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT,
+                .physicalDevice = m_physDevice->rawHandle(),
+                .device = m_device->rawHandle(),
+                .preferredLargeHeapBlockSize = 0,
+                .pVulkanFunctions = &vkFunctions,
+                .instance = GVKInstance::vki()->rawInstance()};
+
+    if (vmaCreateAllocator(&allocatorCI, &m_allocator) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create VMA allocator!");
+    }
 }
 
 VkBool32 GolApp::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData) {

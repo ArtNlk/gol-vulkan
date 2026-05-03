@@ -7,6 +7,8 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#include <vk_mem_alloc.h>
+
 #include <vector>
 #include <string>
 #include <memory>
@@ -96,6 +98,8 @@ protected:
     static std::vector<std::string> getRequiredDeviceExtensions();
 
     GLFWwindow* m_window;
+
+    VmaAllocator m_allocator;
 
     std::shared_ptr<VkWrap::VulkanDebugMessenger> m_debugMessenger;
     std::shared_ptr<VkWrap::VulkanPhysicalDevice> m_physDevice;

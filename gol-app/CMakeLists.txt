@@ -35,6 +35,7 @@ add_executable(GOL-app ${SOURCES} ${HEADERS}
 target_link_libraries(GOL-app VulkanWrapper)
 #target_link_libraries(GOL-app Vulkan::Vulkan)
 target_link_libraries(GOL-app glfw)
+target_link_libraries(GOL-app VulkanMemoryAllocator)
 
 add_subdirectory(./shaders/)
 
